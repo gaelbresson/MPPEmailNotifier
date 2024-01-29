@@ -1,0 +1,432 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" lang="en">
+<head>
+    <title>Task List</title>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.4.1/css/bootstrap.min.css">
+    <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.6.4/jquery.min.js"></script>
+    <script src="https://maxcdn.bootstrapcdn.com/bootstrap/3.4.1/js/bootstrap.min.js"></script>
+    <script type="text/javascript" src="https://www.gstatic.com/charts/loader.js"></script>
+    <script th:inline="javascript">
+    /*<![CDATA[*/
+
+    google.charts.load('current', {'packages':['gantt']});
+    google.charts.setOnLoadCallback(drawChart);
+
+    function daysToMilliseconds(days) {
+      return days * 24 * 60 * 60 * 1000;
+    }
+
+    function drawChart() {
+
+      var data = new google.visualization.DataTable();
+      data.addColumn('string', 'Task ID');
+      data.addColumn('string', 'Task Name');
+      data.addColumn('date', 'Start Date');
+      data.addColumn('date', 'End Date');
+      data.addColumn('number', 'Duration');
+      data.addColumn('number', 'Percent Complete');
+      data.addColumn('string', 'Dependencies');
+
+      var dateN = new Date();
+
+      var theList = ([[${tasks}]]);
+
+      for (var i = 0; i < theList.length; i++) {
+        valuesArray = theList[i].valuesList;
+        start = new Date(valuesArray[2]);
+        valuesArray.splice(2,1,start);
+        end = new Date(valuesArray[3]);
+        valuesArray.splice(3,1,end);
+        data.addRow(valuesArray);
+      }
+
+//      data.addRow([12, 'BlackOut',  new Date(2015, 0, 1, 9, 30, 0), daysToMilliseconds(9), null,  0,  'Research']);
+
+      var options = {
+        height: 30000
+      };
+
+      var chart = new google.visualization.Gantt(document.getElementById('chart_div'));
+
+      chart.draw(data, options);
+    }
+    /*]]>*/
+    </script>
+    <style>
+     .task {
+        border : 4px solid grey;
+     }
+     .task td{
+        padding: 0;
+     }
+     .taskMain{
+        background-color : #ccffff;
+     }
+     .prev{
+     width: 100%;
+     margin-bottom: 0;
+     }
+     .subtask_title{
+        text-align: right;
+        width: 5%;
+     }
+     .stroke{
+        text-decoration: line-through;
+     }
+     .predecessor{
+        align: center;
+     }
+     .table>tbody>tr>td {
+        padding: 0;
+     }
+     ul {
+        padding-inline-start: 10px;
+     }
+     .taskID{
+        vertical-align: middle !important;
+        text-align: center !important;
+        width: 5%;
+     }
+     .taskName{
+        width: 5%;
+     }
+     .taskName{
+        width: 25%;
+     }
+     .taskStartDate{
+        width: 15%;
+     }
+     .taskEndDate{
+        width: 15%;
+     }
+     .taskDuration{
+        width: 5%;
+     }
+     .taskResource{
+        width: 20%;
+     }
+     .taskStatus{
+        width: 15%;
+     }
+     .reminder-late{
+        background-color:crimson;
+        text-align: center;
+        font-size:x-large;
+     }
+     .reminder-current{
+        background-color:orange;
+        text-align: center;
+        font-size:large;
+     }
+     .reminder-next{
+        background-color:grey;
+        text-align: center;
+        font-size:initial;
+     }
+     .reminder-closed{
+        background-color:white;
+        text-align: center;
+        font-size:small;
+     }
+     .reminder-colName{
+        font-size: smaller;
+        background-color: lightgray;
+        text-align: center;
+     }
+     .reminder>th>span{
+        font-size: x-large;
+        margin-left: 30px;
+     }
+    </style>
+</head>
+<body>
+
+
+    <h1> <a href="/"> &nbsp; &nbsp; <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" fill="currentColor" class="bi bi-arrow-up-left-circle-fill" viewBox="0 0 16 16">
+        <path d="M16 8A8 8 0 1 1 0 8a8 8 0 0 1 16 0zm-5.904 2.803a.5.5 0 1 0 .707-.707L6.707 6h2.768a.5.5 0 1 0 0-1H5.5a.5.5 0 0 0-.5.5v3.975a.5.5 0 0 0 1 0V6.707l4.096 4.096z"/>
+    </svg></a> &nbsp; Tasks</h1>
+    <table class="table table-hover">
+        <thead>
+        <tr>
+            <th class="taskID">ID</th>
+            <th class="taskName">Name</th>
+            <th class="taskStartDate">Start Date</th>
+            <th class="taskEndDate">End Date</th>
+            <th class="taskDuration">Duration</th>
+            <th class="taskResource">Resource</th>
+            <th class="taskStatus">Status</th>
+            <!--
+                    <th width="5%"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-eyeglasses" viewBox="0 0 16 16">
+                        <path d="M4 6a2 2 0 1 1 0 4 2 2 0 0 1 0-4zm2.625.547a3 3 0 0 0-5.584.953H.5a.5.5 0 0 0 0 1h.541A3 3 0 0 0 7 8a1 1 0 0 1 2 0 3 3 0 0 0 5.959.5h.541a.5.5 0 0 0 0-1h-.541a3 3 0 0 0-5.584-.953A1.993 1.993 0 0 0 8 6c-.532 0-1.016.208-1.375.547zM14 8a2 2 0 1 1-4 0 2 2 0 0 1 4 0z"/>
+                    </svg></th>
+                    <th width="5%"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-caret-right-square-fill" viewBox="0 0 16 16">
+                        <path d="M0 2a2 2 0 0 1 2-2h12a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2H2a2 2 0 0 1-2-2V2zm5.5 10a.5.5 0 0 0 .832.374l4.5-4a.5.5 0 0 0 0-.748l-4.5-4A.5.5 0 0 0 5.5 4v8z"/>
+                    </svg></i></th>
+                    <th width="5%"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-bag-check-fill" viewBox="0 0 16 16">
+                        <path fill-rule="evenodd" d="M10.5 3.5a2.5 2.5 0 0 0-5 0V4h5v-.5zm1 0V4H15v10a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V4h3.5v-.5a3.5 3.5 0 1 1 7 0zm-.646 5.354a.5.5 0 0 0-.708-.708L7.5 10.793 6.354 9.646a.5.5 0 1 0-.708.708l1.5 1.5a.5.5 0 0 0 .708 0l3-3z"/>
+                    </svg></th>
+            -->
+        </tr>
+        </thead>
+        <!-- Loop through tasks and display the details -->
+        <tbody>
+        <TR th:each="task : ${tasks}" class="task">
+            <input type="hidden" id="yourId" th:value="${task.valuesList}"/>
+            <td colspan="9">
+                <table class="prev table">
+                    <tr style="font-size:80%;" th:if="${task != null && task.predecessors != null && not #lists.isEmpty(task.predecessors)}" class="predecessor">
+                        <td class="subtask_title">
+                           <SMALL>PREV:</SMALL>
+                        </td>
+                        <td width="80%" colspan="5">
+                           <small th:each="pred : ${task.predecessors}">
+                                   <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-arrow-bar-down" viewBox="0 0 16 16">
+                                        <path fill-rule="evenodd" d="M1 3.5a.5.5 0 0 1 .5-.5h13a.5.5 0 0 1 0 1h-13a.5.5 0 0 1-.5-.5zM8 6a.5.5 0 0 1 .5.5v5.793l2.146-2.147a.5.5 0 0 1 .708.708l-3 3a.5.5 0 0 1-.708 0l-3-3a.5.5 0 0 1 .708-.708L7.5 12.293V6.5A.5.5 0 0 1 8 6z"/>
+                                   </svg>
+                                    <div class="subtask_" th:if="${100 eq pred.percentage}">
+                                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-bookmark-check-fill" viewBox="0 0 16 16">
+                                            <path fill-rule="evenodd" d="M2 15.5V2a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v13.5a.5.5 0 0 1-.74.439L8 13.069l-5.26 2.87A.5.5 0 0 1 2 15.5zm8.854-9.646a.5.5 0 0 0-.708-.708L7.5 7.793 6.354 6.646a.5.5 0 1 0-.708.708l1.5 1.5a.5.5 0 0 0 .708 0l3-3z"/>
+                                        </svg>
+                                        <span th:utext="${pred.ID}+':'+${pred.name}" class="stroke" >
+                                        </span><BR/>
+                                    </div>
+                                   <span th:unless="${100 eq pred.percentage}">
+                                       <span th:text="${pred.ID}+':'+${pred.name}+' - '+${pred.percentage}+'%'" >
+                                       </span><BR/>
+                                   </span>
+                           </small>
+                        </td>
+                        <td width="15%">
+                            &nbsp;
+                        </td>
+                    </tr>
+                    <tr th:if="${task != null}" class="taskMain" data-trigger="hover" data-toggle="popover" data-placement="top" th:attr="data-content=${task.parentsLI}, title='Task ID:'+${task.ID}">
+
+                        <td class="taskID" th:if="${task.endDate.before(#dates.createNow())}" th:attr="style='background: linear-gradient(to right, green 0% '+${task.percentage}+'%, red '+${task.percentage}+'% 100%) no-repeat;'" th:utext="${task.percentage}+'%'" />
+                        <td class="taskID" th:if="${task.endDate.after(#dates.createNow())}" th:attr="style='background: linear-gradient(to right, green 0% '+${task.percentage}+'%, grey '+${task.percentage}+'% 100%) no-repeat;'" th:utext="${task.percentage}+'%'" />
+                        <td class="taskName" width="25%"><span th:text="${task.name}" ></span></td>
+                        <td class="taskStartDate" style="font-size:80%;" width="15%" th:text="${task.startDate}"></td>
+                        <td class="taskEndDate" style="font-size:80%;" width="15%" th:text="${task.endDate}"></td>
+                        <td class="taskDuration" width="5%" th:text="${task.duration}"></td>
+                        <td class="taskResource" width="20%" th:text="${task.resource}"></td>
+                        <td class="taskStatus" width="15%" th:text="${task.fullText}">
+                            <!--
+                            <form th:action="@{/validate}" method="get">
+                                <input hidden id="taskId" name="taskId" th:value="${task.ID}"/>
+                                <button class="btn btn-primary btn-lg btn-block" style="font-size:75%;" type="submit">I'm OK</button>
+                            </form>
+                            -->
+
+                        </td>
+                    </tr>
+                    <tr style="font-size:80%;" th:if="${task != null && task.successors != null && not #lists.isEmpty(task.successors)}" class="successors">
+                        <td width="5%" class="subtask_title">
+                            <SMALL>POST:</SMALL>
+                        </td>
+                        <td width="80%" colspan="6">
+                            <small th:each="pred : ${task.successors}">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-arrow-bar-right" viewBox="0 0 16 16">
+                                    <path fill-rule="evenodd" d="M6 8a.5.5 0 0 0 .5.5h5.793l-2.147 2.146a.5.5 0 0 0 .708.708l3-3a.5.5 0 0 0 0-.708l-3-3a.5.5 0 0 0-.708.708L12.293 7.5H6.5A.5.5 0 0 0 6 8Zm-2.5 7a.5.5 0 0 1-.5-.5v-13a.5.5 0 0 1 1 0v13a.5.5 0 0 1-.5.5Z"/>
+                                </svg>
+                                <div th:if="${100 eq pred.percentage}">
+                                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-bookmark-check-fill" viewBox="0 0 16 16">
+                                        <path fill-rule="evenodd" d="M2 15.5V2a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v13.5a.5.5 0 0 1-.74.439L8 13.069l-5.26 2.87A.5.5 0 0 1 2 15.5zm8.854-9.646a.5.5 0 0 0-.708-.708L7.5 7.793 6.354 6.646a.5.5 0 1 0-.708.708l1.5 1.5a.5.5 0 0 0 .708 0l3-3z"/>
+                                    </svg>
+                                    <span th:utext="${pred.ID}+':'+${pred.name}" class="stroke" >
+                                        </span><BR/>
+                                </div>
+                                <span th:unless="${100 eq pred.percentage}">
+                                       <span th:text="${pred.ID}+':'+${pred.name}+' - '+${pred.percentage}+'%'" >
+                                       </span><BR/>
+                                </span>
+                            </small>
+                        </td>
+                    </tr>
+                </table>
+            </td>
+        </tr>
+    </tbody>
+    </table>
+    <table>
+        <tbody>
+            <th:block th:each="task : ${tasks2}">
+                <TR class="reminder">
+                    <th colspan="5">
+                        <span th:text="${task.parentName}" >
+                        </span><BR/>
+                    </th>
+                    <th>
+                        <span th:text="${task.parentOwner}" >
+                        </span><BR/>
+                    </th>
+                </TR>
+                <th:block th:if="${not #lists.isEmpty(task.tasksLate)}">
+                    <tR>
+                        <td colspan="5" class="reminder-late">
+                                <span> Late Tasks :
+                                </span><BR/>
+                        </td>
+                    </tR>
+                    <tr class="reminder-colName">
+                        <td width="40%">NAME</td>
+                        <td width="15%">Start Date</td>
+                        <td width="15%">End Date</td>
+                        <td width="20%">Assignee</td>
+                        <td width="10%">Can start</td>
+                    </tr>
+                </th:block>
+                <th:block th:each="stLate : ${task.tasksLate}">
+                    <TR>
+                        <td>
+                            <span th:text="${stLate.Name}" >
+                            </span><BR/>
+                        </td>
+                        <td>
+                            <span th:text="${#dates.format(stLate.startDate, 'dd-MM-yyyy HH:mm')}" >
+                            </span><BR/>
+                        </td>
+                        <td>
+                            <span th:text="${#dates.format(stLate.endDate, 'dd-MM-yyyy HH:mm')}" >
+                            </span><BR/>
+                        </td>
+                        <td>
+                            <span th:text="${stLate.resource}" >
+                            </span><BR/>
+                        </td>
+                        <td>
+                            <span th:text="${stLate.canStart}" >
+                            </span><BR/>
+                        </td>
+                    </TR>
+                </th:block>
+                <th:block th:if="${not #lists.isEmpty(task.tasksCurrent)}">
+                    <tR>
+                        <td colspan="5" class="reminder-current">
+                                <span> Current Tasks :
+                                </span><BR/>
+                        </td>
+                    </tR>
+                    <tr class="reminder-colName">
+                        <td>Task name</td>
+                        <td>Start Date</td>
+                        <td>End Date</td>
+                        <td>Assignee</td>
+                        <td>Can start</td>
+                    </tr>
+                </th:block>
+                <th:block th:each="stCurrent : ${task.tasksCurrent}">
+                    <TR>
+                        <td>
+                            <span th:text="${stCurrent.Name}" >
+                            </span><BR/>
+                        </td>
+                        <td>
+                            <span th:text="${#dates.format(stCurrent.startDate, 'dd-MM-yyyy HH:mm')}" >
+                            </span><BR/>
+                        </td>
+                        <td>
+                            <span th:text="${#dates.format(stCurrent.endDate, 'dd-MM-yyyy HH:mm')}" >
+                            </span><BR/>
+                        </td>
+                        <td>
+                            <span th:text="${stCurrent.resource}" >
+                            </span><BR/>
+                        </td>
+                        <td>
+                            <span th:text="${stCurrent.canStart}" >
+                            </span><BR/>
+                        </td>
+                    </TR>
+                </th:block>
+                <th:block th:if="${not #lists.isEmpty(task.tasksNext)}">
+                    <tR>
+                        <td colspan="5" class="reminder-next">
+                                <span> NextTasks :
+                                </span><BR/>
+                        </td>
+                    </tR>
+                    <tr class="reminder-colName">
+                        <td>Task name</td>
+                        <td>Start Date</td>
+                        <td>End Date</td>
+                        <td>Assignee</td>
+                        <td>Can start</td>
+                    </tr>
+                </th:block>
+                <th:block th:each="stNext : ${task.tasksNext}">
+                    <TR>
+                        <td>
+                            <span th:text="${stNext.Name}" >
+                            </span><BR/>
+                        </td>
+                        <td>
+                            <span th:text="${#dates.format(stNext.startDate, 'dd-MM-yyyy HH:mm')}" >
+                            </span><BR/>
+                        </td>
+                        <td>
+                            <span th:text="${#dates.format(stNext.endDate, 'dd-MM-yyyy HH:mm')}" >
+                            </span><BR/>
+                        </td>
+                        <td>
+                            <span th:text="${stNext.resource}" >
+                            </span><BR/>
+                        </td>
+                        <td>
+                            <span th:text="${stNext.canStart}" >
+                            </span><BR/>
+                        </td>
+                    </TR>
+                </th:block>
+                <th:block th:if="${not #lists.isEmpty(task.tasksClosed)}">
+                    <tR>
+                        <td colspan="5"  class="reminder-closed">
+                                <span> Closed Tasks :
+                                </span><BR/>
+                        </td>
+                    </tR>
+                    <tr class="reminder-colName">
+                        <td>Task name</td>
+                        <td>Start Date</td>
+                        <td>End Date</td>
+                        <td>Assignee</td>
+                        <td>Can start</td>
+                    </tr>
+                </th:block>
+                <th:block th:each="stClosed : ${task.tasksClosed}">
+                    <TR>
+                        <td>
+                            <span th:text="${stClosed.Name}" >
+                            </span><BR/>
+                        </td>
+                        <td>
+                            <span th:text="${#dates.format(stClosed.startDate, 'dd-MM-yyyy HH:mm')}" >
+                            </span><BR/>
+                        </td>
+                        <td>
+                            <span th:text="${#dates.format(stClosed.endDate, 'dd-MM-yyyy HH:mm')}" >
+                            </span><BR/>
+                        </td>
+                        <td>
+                            <span th:text="${stClosed.resource}" >
+                            </span><BR/>
+                        </td>
+                        <td>
+                            <span th:text="${stClosed.canStart}" >
+                            </span><BR/>
+                        </td>
+                    </TR>
+                </th:block>
+            </th:block>
+        </tbody>
+    </table>
+<script>
+
+$("[data-toggle=popover]").popover({
+    html: true!
+});
+
+</script>
+</body>
+</html>
