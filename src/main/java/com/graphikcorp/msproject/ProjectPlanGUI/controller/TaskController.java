@@ -33,57 +33,41 @@ import org.apache.logging.log4j.LogManager;
 
 @Controller
 public class TaskController {
-	// Sample list of tasks (replace with your actual task data)
-	private List<Task> taskList = new ArrayList<>();
+	// This task reminder list will contains all reminder email we have to send
 	private List<TasksReminder> taskList2 = new ArrayList<>();
-
-
 	Logger logger = LogManager.getLogger(LoggingController.class);
-	
+
+	//this specific task reminder will be used for each mail to send and populate the email templates
 	private TasksReminder taskToRemind = new TasksReminder();
 
-	@Value("${notif.email.BCC:Gael.bresson@carrier.com,Gaelle.Monville@Carrier.com,Claire.Chaniot@carrier.com,Jean-Yves.Barlogis@carrier.com,Tatiana.PayetInozemtseva@carrier.com,OUALID.KHEMAKHEM@carrier.com}")
+	// Here are the configuration values that may be overloaded by the configuration file (application.properties)
+	@Value("${notif.email.BCC:John.Doe@mail.com,Emily.Doe@mail.com}")
 	private String notificationEMailBCC;
-
-	@Value("${notif.email.TEST:gael.bresson@protonmail.com,Gael.bresson@carrier.com}")
+	@Value("${notif.email.TEST:John.Doe@mail.com,Emily.Doe@mail.com}")
 	private String notificationEMailTestDest;
-
-	@Value("${mail.smtp.host:mailhub.carcgl.com}")
+	@Value("${mail.smtp.host:smtp.mail.com}")
 	private String MAIL_SMTP_HOST;
 	@Value("${mail.smtp.port:25}")
 	private String MAIL_SMTP_PORT;
-
+	@Value("${mppFilePath:C:\\Users\\johndoe\\myMPPFile.mpp}")
+	private String PROJECT_FILE_PATH;
+	@Value("${outlineFilter}")
+	private String OUTLINE_FILTER;
+	@Value("${web.context:}")
+	private String WEB_CONTEXT;
 	@Autowired
+
 	Environment environment;
 
-	// Endpoint for the index page
+	// Endpoint for the root URL
 	@GetMapping("/")
 	public String showIndexPage(Model model) {
-		//taskList = loadTasks();
+		// by accessing this page, the task list is build a first time with current parameters established
 		taskList2 = listTasksPerParent();
 		model.addAttribute("PROJECT_FILE_PATH", PROJECT_FILE_PATH);
 		model.addAttribute("OUTLINE_FILTER", OUTLINE_FILTER);
 		model.addAttribute("TEST_DEST_EMAIL", notificationEMailTestDest);
 		return "index"; // Return the name of the view template to render
-	}
-
-	@Value("${mppFilePath:C:\\Users\\gabresso\\Carrier Corporation\\ATLAS - 14-Cutover and Deployment\\01-Cutover\\01_R2\\GLOBAL-Cutover[DryRun].mpp}")
-	private String PROJECT_FILE_PATH;
-
-	@Value("${outlineFilter}")
-	private String OUTLINE_FILTER;
-
-	@Value("${web.context:}")
-	private String WEB_CONTEXT;
-
-	// Endpoint to display the list of tasks based on the resource
-	@GetMapping("/tasks")
-	public String listTasksByResource(@RequestParam("resource") Optional<String> resource, Model model) {
-
-		logger.info("Load task for notifications");
-		taskList2 = listTasksPerParent();
-		model.addAttribute("tasks2", taskList2);
-		return "task-list"; // Return the name of the view template to render
 	}
 
 	// Endpoint to display the list of tasks based on the resource
@@ -94,6 +78,7 @@ public class TaskController {
 		return "reminderContent"; // Return the name of the view template to render
 	}
 
+	//This methode is used to build the HTML Email to send base on the
 	private String getReminderContent(boolean late, boolean current, boolean next, int nbDays, boolean test){
 
 		String result = "Sorry but we faced trouble to send you the list of Task for the cut over, please contact back the cut over team about that";
@@ -145,7 +130,6 @@ public class TaskController {
 
 		try{
 			// Specify the path to the Microsoft Project file
-			//PROJECT_FILE_PATH="\\\\Vmc10313arogm02\\ehishared\\Transfer\\GLOBAL-Cutover[DryRun].mpp";
 			String filePath = PROJECT_FILE_PATH;
 
 			// Load the project file
@@ -227,11 +211,11 @@ public class TaskController {
 									BasicTask bt = getBasicTaskFromMPPTask(subTask, latestStart, latestFinish);
 									closed.add(bt);
 									if(bt.getResource() != null)
-									for (int j = 0; j < bt.getResource().size(); j++) {
-										String resource =  bt.getResource().get(j);
-										if(!assignees.contains(resource.replace(';',',')))
-											assignees.add(resource);
-									}
+										for (int j = 0; j < bt.getResource().size(); j++) {
+											String resource =  bt.getResource().get(j);
+											if(!assignees.contains(resource.replace(';',',')))
+												assignees.add(resource);
+										}
 								} else if (latestStart.after(new Date())) {
 									//Next tasks not finished
 									BasicTask bt = getBasicTaskFromMPPTask(subTask, latestStart, latestFinish);
@@ -248,20 +232,20 @@ public class TaskController {
 									BasicTask bt = getBasicTaskFromMPPTask(subTask, latestStart, latestFinish);
 									late.add(bt);
 									if(bt.getResource() != null)
-									for (int j = 0; j < bt.getResource().size(); j++) {
-										String resource =  bt.getResource().get(j);
-										if(!assignees.contains(resource.replace(';',',')))
-											assignees.add(resource);
-									}
+										for (int j = 0; j < bt.getResource().size(); j++) {
+											String resource =  bt.getResource().get(j);
+											if(!assignees.contains(resource.replace(';',',')))
+												assignees.add(resource);
+										}
 								} else {
 									BasicTask bt = getBasicTaskFromMPPTask(subTask, latestStart, latestFinish);
 									current.add(bt);
 									if(bt.getResource() != null)
-									for (int j = 0; j < bt.getResource().size(); j++) {
-										String resource =  bt.getResource().get(j);
-										if(!assignees.contains(resource.replace(';',',')))
-											assignees.add(resource);
-									}
+										for (int j = 0; j < bt.getResource().size(); j++) {
+											String resource =  bt.getResource().get(j);
+											if(!assignees.contains(resource.replace(';',',')))
+												assignees.add(resource);
+										}
 								}
 							}
 						}
@@ -333,12 +317,22 @@ public class TaskController {
 		return aTask;
 	}
 
+	/**
+	 * Method extracting basic data from a MPP task
+	 * @param task the task extracted from the MPP file
+	 * @param latestStart used to define the start date of the task depending on previous analysis done the Baseline and actual start date
+	 * @param latestFinish used to define the finish date of the task depending on previous analysis done the Baseline and actual finish date
+	 * @return a {@link BasicTask} that will be used in the reminders Emails
+	 */
 	private BasicTask getBasicTaskFromMPPTask(net.sf.mpxj.Task task, Date latestStart, Date latestFinish) {
+
+		//Build the task to build based on the MPP task
 		BasicTask aTask = new BasicTask();
 		aTask.setDuration(task.getDurationText());
 		aTask.setID(task.getID().toString());
 		aTask.setName(task.getName());
 		aTask.setComments(HtmlEscape.escapeHtml4Xml( task.getNotes() ).replace( System.getProperty("line.separator"), "<br />" ));
+		//Build the resources list defined for the task.
 		List<String> resources = new ArrayList<>();
 		if(task.getResourceAssignments() != null && !task.getResourceAssignments().isEmpty()) {
 			List<ResourceAssignment> SuccessorResources = task.getResourceAssignments();
@@ -447,6 +441,11 @@ public class TaskController {
 		return aTask;
 	}
 
+	/**
+	 * Methode used to identify if all predecessors was completed or not and to check successor actors to indicate in the reminder emails.
+	 * @param task The {@link net.sf.mpxj.Task} extracted from the MPP
+	 * @return a @{@link BasicTask}
+	 */
 	public BasicTask toBasicTask(net.sf.mpxj.Task task){
 		BasicTask aTask = new BasicTask();
 		aTask.setDuration(task.getDurationText());
@@ -519,6 +518,13 @@ public class TaskController {
 		return aTask;
 	}
 
+	/**
+	 * Extract from the MPP data the resources assigned to the MPP task
+	 * @param input Take the resource assignment string from the {@link net.sf.mpxj.Task}
+	 * @param startMarker the string that allow us to identify the beginning of the string we have to extract
+	 * @param endMarker the string that allow us to identify the end of the string we have to extract
+	 * @return The extracted string
+	 */
 	private String extractSubstring(String input, String startMarker, String endMarker) {
 		int startIndex = input.indexOf(startMarker);
 		if (startIndex == -1) {
@@ -533,6 +539,12 @@ public class TaskController {
 		return input.substring(startIndex + startMarker.length(), endIndex);
 	}
 
+	/**
+	 * This page allow to reload the MPP based on the values put in the index form.
+	 * @param mppPath consider the MPP file fullpath
+	 * @param outlineFilter the outline filter if needed
+	 * @return to the index page
+	 */
 	@GetMapping("/updateMPP")
 	private RedirectView updateMpp(@RequestParam("mppPath") Optional<String> mppPath, @RequestParam("outlineFilter") Optional<String> outlineFilter){
 		if(!mppPath.isEmpty())
@@ -544,6 +556,16 @@ public class TaskController {
 		return new RedirectView(WEB_CONTEXT+"/");
 	}
 
+	/**
+	 * This page is called to build the reminder emails
+	 * @param bLate Define if we should send or not the late tasks information
+	 * @param bCurrent Define if we should send or not the current tasks information
+	 * @param bNext Define if we should send or not the Next tasks information
+	 * @param nbDays Define How many days we should consider to list the next tasks
+	 * @param btest  Define if we should send emails to the Test recipient or to the real people involved.
+	 * @param testDestEmail Define the test email address to use for test purpose
+	 * @return redirect to the index page
+	 */
 	@GetMapping("/sendMail")
 	private RedirectView sendAllReminder(@RequestParam("late") Optional<Boolean> bLate,@RequestParam("current") Optional<Boolean> bCurrent,@RequestParam("next") Optional<Boolean> bNext,@RequestParam("nbDays") Integer nbDays,@RequestParam("test") Optional<Boolean> btest,@RequestParam("testDestEmail") Optional<String> testDestEmail){
 
@@ -554,8 +576,8 @@ public class TaskController {
 			TasksReminder tasksReminder = taskList2.get(i);
 			if(
 					(tasksReminder.getTasksCurrent() != null && tasksReminder.getTasksCurrent().size()>0) ||
-					(tasksReminder.getTasksNext() != null && tasksReminder.getTasksNext().size()>0) ||
-					(tasksReminder.getTasksLate() != null && tasksReminder.getTasksLate().size()>0)
+							(tasksReminder.getTasksNext() != null && tasksReminder.getTasksNext().size()>0) ||
+							(tasksReminder.getTasksLate() != null && tasksReminder.getTasksLate().size()>0)
 			) {
 				//Filter next tasks per starting time filter
 				for (int j = 0; j < tasksReminder.getTasksNext().size(); j++) {
@@ -579,16 +601,26 @@ public class TaskController {
 
 				if(
 						(tasksReminder.getTasksCurrent() != null && tasksReminder.getTasksCurrent().size()>0) ||
-						(tasksReminder.getTasksNext() != null && tasksReminder.getTasksNext().size()>0) ||
-						(tasksReminder.getTasksLate() != null && tasksReminder.getTasksLate().size()>0)
+								(tasksReminder.getTasksNext() != null && tasksReminder.getTasksNext().size()>0) ||
+								(tasksReminder.getTasksLate() != null && tasksReminder.getTasksLate().size()>0)
 				) {
-						sendReminderEmail(tasksReminder, !bLate.isEmpty() && bLate.get(), !bCurrent.isEmpty() && bCurrent.get(), !bNext.isEmpty() && bNext.get(), nbDays, !btest.isEmpty() && btest.get());
+					sendReminderEmail(tasksReminder, !bLate.isEmpty() && bLate.get(), !bCurrent.isEmpty() && bCurrent.get(), !bNext.isEmpty() && bNext.get(), nbDays, !btest.isEmpty() && btest.get());
 				}
 			}
 		}
 
 		return new RedirectView(WEB_CONTEXT+"/");
 	}
+
+	/**
+	 * Send Email of the current {@link TasksReminder}
+	 * @param tasksReminder the {@link TasksReminder} to send
+	 * @param late define if we should or not send the late tasks
+	 * @param current define if we should or not send the current tasks
+	 * @param next define if we should or not send the next tasks
+	 * @param nbDays define how many days we should consider to send for the next tasks
+	 * @param test Define if we should send it for test purpose or not (content change maybe)
+	 */
 	private void sendReminderEmail(TasksReminder tasksReminder, Boolean late, Boolean current, Boolean next, Integer nbDays, Boolean test){
 		// Recipient's email ID needs to be mentioned.
 		String to = "gael.bresson@carrier.com";
