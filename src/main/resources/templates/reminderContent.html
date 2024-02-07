@@ -131,6 +131,8 @@ p.Critical{color:red};
 	font-family:Roboto, Helvetica, sans-serif;}
 </style>
 <![endif]-->
+
+<!-- PART1 : Here is the text on top of tasks lists. You can change the text if needed -->
 <p class=MsoNormal><span lang=EN-US style='mso-ansi-language:EN-US'>Dear
 colleagues,</span></p>
 
@@ -148,6 +150,8 @@ colleagues,</span></p>
     - All feedback using <b><a th:href="@{mailto:atlas-r2-cutover@carrier.com?subject={topicName}(topicName='R2 task feedback :'+${taskToRemind.parentFullPath}+' > ')}" target="_blank" > this link </a></b> for all progress and if you face ANY problem to reach the planned end date.</span></br>
     <b>PLEASE NOTIFY US FOR ANY TASK STATUS CHANGED: Started, Completed</b>
 </p>
+
+<!-- PART2 : Here is a reminder of the task part addressed by the email send (parent task full path and assigned resources to that parent task -->
 <table class=MsoNormalTable
            style='width:1124.15pt;mso-yfti-tbllook:1184;
  mso-padding-alt:3pt 3pt 3pt 3pt; border-collapse: collapse;' >
@@ -165,6 +169,7 @@ colleagues,</span></p>
         </tbody>
 </table>
 
+<!-- PART3 : Here is the list of late tasks -->
 <th:block th:if="${#strings.equals('true',param.late) and not #lists.isEmpty(taskToRemind.tasksLate)}">
     </br>
     <table class=MsoNormalTable
@@ -272,6 +277,7 @@ mso-padding-alt:3pt 3pt 3pt 3pt; border-collapse: collapse;' >
         </tbody>
     </table>
 </th:block>
+<!-- PART4 : Here is the list of current tasks -->
 <th:block th:if="${#strings.equals('true',param.current) and (not #lists.isEmpty(taskToRemind.tasksCurrent))}">
     </br>
     <table class=MsoNormalTable
@@ -368,6 +374,7 @@ mso-padding-alt:3pt 3pt 3pt 3pt; border-collapse: collapse;' >
         </tbody>
     </table>
 </th:block>
+<!-- PART5 : Here is the list of next tasks -->
 <th:block th:if="${#strings.equals('true',param.next) and not #lists.isEmpty(taskToRemind.tasksNext)}">
     </br>
     <table class=MsoNormalTable
@@ -465,6 +472,7 @@ mso-padding-alt:3pt 3pt 3pt 3pt; border-collapse: collapse;' >
     </table>
 </th:block>
 </br>
+<!-- PART6 : Here is the text added at the end of the email in case of test (to allow to see who will be the recipients of the email-->
 </br>
 <th:block th:if="${#strings.equals('true',param.test)}">
     As we are in test, here are the destination expected for this email in Production:<BR/>

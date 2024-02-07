@@ -18,7 +18,6 @@ import org.unbescape.html.HtmlEscape;
 import javax.mail.*;
 import javax.mail.internet.*;
 import java.io.IOException;
-import java.lang.reflect.Field;
 import java.net.URI;
 import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
@@ -41,6 +40,8 @@ public class TaskController {
 	private TasksReminder taskToRemind = new TasksReminder();
 
 	// Here are the configuration values that may be overloaded by the configuration file (application.properties)
+	@Value("${notif.email.FROM:John.Doe@mail.com}")
+	private String notificationEMailFROM;
 	@Value("${notif.email.BCC:John.Doe@mail.com,Emily.Doe@mail.com}")
 	private String notificationEMailBCC;
 	@Value("${notif.email.TEST:John.Doe@mail.com,Emily.Doe@mail.com}")
@@ -56,7 +57,6 @@ public class TaskController {
 	@Value("${web.context:}")
 	private String WEB_CONTEXT;
 	@Autowired
-
 	Environment environment;
 
 	// Endpoint for the root URL
@@ -117,11 +117,10 @@ public class TaskController {
 					HttpResponse.BodyHandlers.ofString());
 
 			result = response.body();
-		}catch(IOException ioe){
+		}catch(IOException | InterruptedException ioe){
 			ioe.printStackTrace();
-		}finally {
-			return result;
 		}
+		return result;
 	}
 
 	private List<TasksReminder>listTasksPerParent() {
@@ -140,10 +139,6 @@ public class TaskController {
 			project = reader.read(filePath);
 
 			LocalDate ld_planEnd = LocalDate.now().plusDays(2000);
-			Date planEnd = Date.from(ld_planEnd.atStartOfDay()
-					.atZone(ZoneId.systemDefault())
-					.toInstant());
-
 			// Iterate over tasks
 			for (net.sf.mpxj.Task task : project.getTasks()) {
 
@@ -168,9 +163,8 @@ public class TaskController {
 
 						List<String> assignees = new ArrayList<String>();
 
-						for (int i = 0; i < subTasks.size(); i++) {
-							net.sf.mpxj.Task subTask =  subTasks.get(i);
-							if(subTask.getActive()) {
+						for (net.sf.mpxj.Task subTask : subTasks) {
+							if (subTask.getActive()) {
 								//Take the later available Start
 								Date latestStart = subTask.getPlannedStart();
 								if (latestStart == null) {
@@ -210,40 +204,40 @@ public class TaskController {
 									//Done tasks
 									BasicTask bt = getBasicTaskFromMPPTask(subTask, latestStart, latestFinish);
 									closed.add(bt);
-									if(bt.getResource() != null)
+									if (bt.getResource() != null)
 										for (int j = 0; j < bt.getResource().size(); j++) {
-											String resource =  bt.getResource().get(j);
-											if(!assignees.contains(resource.replace(';',',')))
+											String resource = bt.getResource().get(j);
+											if (!assignees.contains(resource.replace(';', ',')))
 												assignees.add(resource);
 										}
 								} else if (latestStart.after(new Date())) {
 									//Next tasks not finished
 									BasicTask bt = getBasicTaskFromMPPTask(subTask, latestStart, latestFinish);
 									next.add(bt);
-									if(bt.getResource() != null)
+									if (bt.getResource() != null)
 										for (int j = 0; j < bt.getResource().size(); j++) {
-											String resource =  bt.getResource().get(j);
+											String resource = bt.getResource().get(j);
 
-											if(!assignees.contains(resource.replace(';',',')))
+											if (!assignees.contains(resource.replace(';', ',')))
 												assignees.add(resource);
 										}
 								} else if (latestFinish.before(new Date())) {
 									//Late tasks not finished
 									BasicTask bt = getBasicTaskFromMPPTask(subTask, latestStart, latestFinish);
 									late.add(bt);
-									if(bt.getResource() != null)
+									if (bt.getResource() != null)
 										for (int j = 0; j < bt.getResource().size(); j++) {
-											String resource =  bt.getResource().get(j);
-											if(!assignees.contains(resource.replace(';',',')))
+											String resource = bt.getResource().get(j);
+											if (!assignees.contains(resource.replace(';', ',')))
 												assignees.add(resource);
 										}
 								} else {
 									BasicTask bt = getBasicTaskFromMPPTask(subTask, latestStart, latestFinish);
 									current.add(bt);
-									if(bt.getResource() != null)
+									if (bt.getResource() != null)
 										for (int j = 0; j < bt.getResource().size(); j++) {
-											String resource =  bt.getResource().get(j);
-											if(!assignees.contains(resource.replace(';',',')))
+											String resource = bt.getResource().get(j);
+											if (!assignees.contains(resource.replace(';', ',')))
 												assignees.add(resource);
 										}
 								}
@@ -262,14 +256,14 @@ public class TaskController {
 
 						TasksReminder tr = new TasksReminder();
 
-						String parentFullPath = task.getName();
+						StringBuilder parentFullPath = new StringBuilder(task.getName());
 						net.sf.mpxj.Task ptask = task.getParentTask();
 						while (ptask != null && ptask.getParentTask() != null){
-							parentFullPath = ptask.getName()+" > "+parentFullPath;
+							parentFullPath.insert(0, ptask.getName() + " > ");
 							ptask=ptask.getParentTask();
 						}
 
-						tr.setParentFullPath(parentFullPath);
+						tr.setParentFullPath(parentFullPath.toString());
 						current.sort(Comparator.comparing(BasicTask::getEndDate));
 						tr.setTasksCurrent(current);
 						closed.sort(Comparator.comparing(BasicTask::getEndDate));
@@ -284,9 +278,8 @@ public class TaskController {
 						tr.setAssignees(assignees);
 						tasksReminder.add(tr);
 						taskToRemind = tr;
-					}else{
-						// Do nothing as it's a leaf
 					}
+					// Else Do nothing as it's a leaf
 				}
 			}
 		}
@@ -305,10 +298,10 @@ public class TaskController {
 		List<String> resources = new ArrayList<>();
 		if(task.getResourceAssignments() != null && !task.getResourceAssignments().isEmpty()) {
 			List<ResourceAssignment> SuccessorResources = task.getResourceAssignments();
-			for (int j = 0; j < SuccessorResources.size(); j++) {
-				ResourceAssignment resourceAssignment = SuccessorResources.get(j);
-				String resource = extractSubstring(resourceAssignment.toString(), " resource=", " start=");
-				if (!resources.contains(resource.replaceAll("\\[.*?\\]", "")))
+			for (ResourceAssignment resourceAssignment : SuccessorResources) {
+				String resource;
+				resource = extractSubstring(resourceAssignment.toString(), " resource=", " start=");
+				if (resource!=null && !resources.contains(resource.replaceAll("\\[.*?\\]", "")))
 					resources.add(resource.replaceAll("\\[.*?\\]", ""));
 			}
 		}
@@ -336,9 +329,9 @@ public class TaskController {
 		List<String> resources = new ArrayList<>();
 		if(task.getResourceAssignments() != null && !task.getResourceAssignments().isEmpty()) {
 			List<ResourceAssignment> SuccessorResources = task.getResourceAssignments();
-			for (int j = 0; j < SuccessorResources.size(); j++) {
-				ResourceAssignment resourceAssignment = SuccessorResources.get(j);
-				String resource = extractSubstring(resourceAssignment.toString(), " resource=", " start=");
+			for (ResourceAssignment resourceAssignment : SuccessorResources) {
+				String resource;
+				resource = extractSubstring(resourceAssignment.toString(), " resource=", " start=");
 				if (!resources.contains(resource.replaceAll("\\[.*?\\]", "")))
 					resources.add(resource.replaceAll("\\[.*?\\]", ""));
 			}
@@ -351,8 +344,6 @@ public class TaskController {
 		aTask.setEndDate(latestFinish.toInstant()
 				.atZone(ZoneId.systemDefault())
 				.toLocalDateTime());
-
-		List<BasicTask> predecessors = new ArrayList<BasicTask>();
 
 		boolean predecessorIsDone = true;
 		for (int i = 0; predecessorIsDone && i < task.getPredecessors().size(); i++) {
@@ -379,7 +370,6 @@ public class TaskController {
 		}
 		//aTask.setFullText();
 		// Load all fields in the class (private included)
-		Field[] attributes =  task.getClass().getDeclaredFields();
 		List<String> reversed = new ArrayList<String>();
 		//Iterate on parents to load the parents lists
 		net.sf.mpxj.Task taskIt = task.getParentTask();
@@ -388,12 +378,13 @@ public class TaskController {
 			taskIt = taskIt.getParentTask();
 		}
 
-		String parentsLI = new String();
+		StringBuilder parentsLI;
+		parentsLI = new StringBuilder();
 
 		for (int i = 0, j = reversed.size() - 1; i < j; i++) {
-			parentsLI = "<UL><LI>"+reversed.get(i)+parentsLI+"</li></ul>";
+			parentsLI = new StringBuilder("<UL><LI>" + reversed.get(i) + parentsLI + "</li></ul>");
 		}
-		aTask.setParentsLI(parentsLI);
+		aTask.setParentsLI(parentsLI.toString());
 
 		List<String> parents = new ArrayList<String>();
 		for (int i = 0, j = reversed.size() - 1; reversed.size()>0; i++) {
@@ -427,10 +418,9 @@ public class TaskController {
 			dependencies.add(relation.getTargetTask().getID().toString());
 			if(relation.getTargetTask().getResourceAssignments() != null && relation.getTargetTask().getResourceAssignments().size()>0 && relation.getTargetTask().getResourceAssignments().get(0) != null ) {
 				List<ResourceAssignment> SuccessorResources = relation.getTargetTask().getResourceAssignments();
-				for (int j = 0; j < SuccessorResources.size(); j++) {
-					ResourceAssignment resourceAssignment = SuccessorResources.get(j);
+				for (ResourceAssignment resourceAssignment : SuccessorResources) {
 					String resource = extractSubstring(resourceAssignment.toString(), " resource=", " start=");
-					if(!dependenciesActors.contains(resource))
+					if (!dependenciesActors.contains(resource))
 						dependenciesActors.add(resource);
 				}
 			}
@@ -455,8 +445,7 @@ public class TaskController {
 			List<String> resources = new ArrayList<>();
 			if(task.getResourceAssignments() != null && !task.getResourceAssignments().isEmpty()) {
 				List<ResourceAssignment> SuccessorResources = task.getResourceAssignments();
-				for (int j = 0; j < SuccessorResources.size(); j++) {
-					ResourceAssignment resourceAssignment = SuccessorResources.get(j);
+				for (ResourceAssignment resourceAssignment : SuccessorResources) {
 					String resource = extractSubstring(resourceAssignment.toString(), " resource=", " start=");
 					if (!resources.contains(resource.replaceAll("\\[.*?\\]", "")))
 						resources.add(resource.replaceAll("\\[.*?\\]", ""));
@@ -474,9 +463,7 @@ public class TaskController {
 
 		aTask.setPercentage(task.getPercentageComplete());
 		aTask.setDuration(task.getDuration().toString());
-		//aTask.setFullText();
 		// Load all fields in the class (private included)
-		Field[] attributes =  task.getClass().getDeclaredFields();
 		List<String> reversed = new ArrayList<String>();
 		//Iterate on parents to load the parents lists
 		net.sf.mpxj.Task taskIt = task.getParentTask();
@@ -485,12 +472,12 @@ public class TaskController {
 			taskIt = taskIt.getParentTask();
 		}
 
-		String parentsLI = new String();
+		StringBuilder parentsLI = new StringBuilder();
 
 		for (int i = 0, j = reversed.size() - 1; i < j; i++) {
-			parentsLI = "<UL><LI>"+reversed.get(i)+parentsLI+"</li></ul>";
+			parentsLI = new StringBuilder("<UL><LI>" + reversed.get(i) + parentsLI + "</li></ul>");
 		}
-		aTask.setParentsLI(parentsLI);
+		aTask.setParentsLI(parentsLI.toString());
 
 		List<String> parents = new ArrayList<String>();
 		for (int i = 0, j = reversed.size() - 1; reversed.size()>0; i++) {
@@ -526,17 +513,17 @@ public class TaskController {
 	 * @return The extracted string
 	 */
 	private String extractSubstring(String input, String startMarker, String endMarker) {
+		String result = null;
 		int startIndex = input.indexOf(startMarker);
-		if (startIndex == -1) {
-			return null; // Start marker not found
+		// Start marker not found
+		if (startIndex != -1) {
+			int endIndex = input.indexOf(endMarker, startIndex + startMarker.length());// End marker not found
+			if (endIndex != -1) {
+				result = input.substring(startIndex + startMarker.length(), endIndex);
+			}
 		}
 
-		int endIndex = input.indexOf(endMarker, startIndex + startMarker.length());
-		if (endIndex == -1) {
-			return null; // End marker not found
-		}
-
-		return input.substring(startIndex + startMarker.length(), endIndex);
+		return result;
 	}
 
 	/**
@@ -547,10 +534,8 @@ public class TaskController {
 	 */
 	@GetMapping("/updateMPP")
 	private RedirectView updateMpp(@RequestParam("mppPath") Optional<String> mppPath, @RequestParam("outlineFilter") Optional<String> outlineFilter){
-		if(!mppPath.isEmpty())
-			PROJECT_FILE_PATH = mppPath.get();
-		if(!outlineFilter.isEmpty())
-			OUTLINE_FILTER = outlineFilter.get();
+		mppPath.ifPresent(s -> PROJECT_FILE_PATH = s);
+		outlineFilter.ifPresent(s -> OUTLINE_FILTER = s);
 		logger.info("Mpp path setup :"+PROJECT_FILE_PATH);
 		logger.info("Outline filter :"+OUTLINE_FILTER);
 		return new RedirectView(WEB_CONTEXT+"/");
@@ -569,42 +554,38 @@ public class TaskController {
 	@GetMapping("/sendMail")
 	private RedirectView sendAllReminder(@RequestParam("late") Optional<Boolean> bLate,@RequestParam("current") Optional<Boolean> bCurrent,@RequestParam("next") Optional<Boolean> bNext,@RequestParam("nbDays") Integer nbDays,@RequestParam("test") Optional<Boolean> btest,@RequestParam("testDestEmail") Optional<String> testDestEmail){
 
-		if(!testDestEmail.isEmpty())
-			notificationEMailTestDest = testDestEmail.get();
+		testDestEmail.ifPresent(s -> notificationEMailTestDest = s);
 
-		for (int i = 0; i < taskList2.size(); i++) {
-			TasksReminder tasksReminder = taskList2.get(i);
-			if(
-					(tasksReminder.getTasksCurrent() != null && tasksReminder.getTasksCurrent().size()>0) ||
-							(tasksReminder.getTasksNext() != null && tasksReminder.getTasksNext().size()>0) ||
-							(tasksReminder.getTasksLate() != null && tasksReminder.getTasksLate().size()>0)
+		for (TasksReminder tasksReminder : taskList2) {
+			if (
+					(tasksReminder.getTasksCurrent() != null && tasksReminder.getTasksCurrent().size() > 0) ||
+							(tasksReminder.getTasksNext() != null && tasksReminder.getTasksNext().size() > 0) ||
+							(tasksReminder.getTasksLate() != null && tasksReminder.getTasksLate().size() > 0)
 			) {
 				//Filter next tasks per starting time filter
 				for (int j = 0; j < tasksReminder.getTasksNext().size(); j++) {
 					BasicTask basicTask = tasksReminder.getTasksNext().get(j);
-					if(LocalDateTime.now().plusDays(nbDays).isBefore(basicTask.getStartDate()))
-					{
-						logger.info("Task "+tasksReminder.getTasksNext().get(j).getName()+" filtered on date start");
+					if (LocalDateTime.now().plusDays(nbDays).isBefore(basicTask.getStartDate())) {
+						logger.info("Task " + tasksReminder.getTasksNext().get(j).getName() + " filtered on date start");
 						tasksReminder.getTasksNext().remove(j);
 						j--;
 					}
 				}
 
-				if(bLate.isEmpty() || !bLate.get())
+				if (bLate.isEmpty() || !bLate.get())
 					tasksReminder.setTasksLate(new ArrayList<BasicTask>());
-				if(bNext.isEmpty() || !bNext.get())
+				if (bNext.isEmpty() || !bNext.get())
 					tasksReminder.setTasksNext(new ArrayList<BasicTask>());
-				if(bCurrent.isEmpty() || !bCurrent.get())
+				if (bCurrent.isEmpty() || !bCurrent.get())
 					tasksReminder.setTasksCurrent(new ArrayList<BasicTask>());
 
 				tasksReminder.refreshAssignees();
 
-				if(
-						(tasksReminder.getTasksCurrent() != null && tasksReminder.getTasksCurrent().size()>0) ||
-								(tasksReminder.getTasksNext() != null && tasksReminder.getTasksNext().size()>0) ||
-								(tasksReminder.getTasksLate() != null && tasksReminder.getTasksLate().size()>0)
+				if ((tasksReminder.getTasksCurrent() != null && tasksReminder.getTasksCurrent().size() > 0) ||
+								(tasksReminder.getTasksNext() != null && tasksReminder.getTasksNext().size() > 0) ||
+								(tasksReminder.getTasksLate() != null && tasksReminder.getTasksLate().size() > 0)
 				) {
-					sendReminderEmail(tasksReminder, !bLate.isEmpty() && bLate.get(), !bCurrent.isEmpty() && bCurrent.get(), !bNext.isEmpty() && bNext.get(), nbDays, !btest.isEmpty() && btest.get());
+					sendReminderEmail(tasksReminder, bLate.isPresent() && bLate.get(), bCurrent.isPresent() && bCurrent.get(), bNext.isPresent() && bNext.get(), nbDays, btest.isPresent() && btest.get());
 				}
 			}
 		}
@@ -622,15 +603,8 @@ public class TaskController {
 	 * @param test Define if we should send it for test purpose or not (content change maybe)
 	 */
 	private void sendReminderEmail(TasksReminder tasksReminder, Boolean late, Boolean current, Boolean next, Integer nbDays, Boolean test){
-		// Recipient's email ID needs to be mentioned.
-		String to = "gael.bresson@carrier.com";
-
 		// Sender's email ID needs to be mentioned
-		String from = "ATLAS-R2-cutover@carrier.com";
-
-
-		// Assuming you are sending email through relay.jangosmtp.net
-		String host = "mailhub.carcgl.com";
+		String from = notificationEMailFROM;
 
 		Properties props = new Properties();
 		props.put("mail.smtp.auth", "false");
@@ -689,4 +663,5 @@ public class TaskController {
 			e.printStackTrace();
 		}
 	}
+
 }
