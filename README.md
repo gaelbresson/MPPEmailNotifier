@@ -1,5 +1,7 @@
 # MPPEmailNotifier
-Here is the source of a projet to allow users to send email notifications on demand based on a MPP file and based on the tasks status
+Here is the source of a projet to allow users to send email notifications on demand based on a MPP file and based on the tasks status.
+
+To use it, feel free to download it (using the green <>Code button on top right, then click on Download ZIP).
 
 # Requirement : 
 - Having proper access to external libraries repository (WARN : some VPN restrict this access, you may have to deactivate it to build properly the project).
